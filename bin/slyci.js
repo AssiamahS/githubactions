@@ -86,9 +86,13 @@ function firstLine(e) {
 
 // ---------------------------------------------------------------- workflow parsing
 
-function findWorkflows(repoDir) {
-  const wfDir = path.join(repoDir, '.github', 'workflows');
-  if (!fs.existsSync(wfDir)) return [];
+function findWorkflows(repoDir, event = 'push') {
+  // .slyci/workflows is the slyci-native pipeline dir — GitHub never sees it,
+  // so a repo can run different CI here vs hosted Actions with zero double-runs.
+  // When it exists it takes over completely and .github/workflows is ignored.
+  const dirs = [path.join(repoDir, '.slyci', 'workflows'), path.join(repoDir, '.github', 'workflows')];
+  const wfDir = dirs.find(d => fs.existsSync(d));
+  if (!wfDir) return [];
   return fs.readdirSync(wfDir)
     .filter(f => /\.ya?ml$/.test(f))
     .map(f => {
@@ -101,15 +105,39 @@ function findWorkflows(repoDir) {
       }
     })
     .filter(Boolean)
-    .filter(({ wf }) => triggersOnPush(wf));
+    .filter(({ wf }) => matchesEvent(wf, event));
 }
 
-function triggersOnPush(wf) {
+function matchesEvent(wf, event) {
   if (!wf || !wf.on) return false;
   const on = wf.on;
-  if (on === 'push') return true;
-  if (Array.isArray(on)) return on.includes('push') || on.includes('workflow_dispatch');
-  return 'push' in on || 'workflow_dispatch' in on;
+  const has = k => on === k || (Array.isArray(on) ? on.includes(k) : k in on);
+  if (event === 'push') return has('push');
+  if (event === 'schedule') return has('schedule');
+  // manual trigger runs anything runnable
+  return has('push') || has('workflow_dispatch') || has('schedule');
+}
+
+function workflowCrons(wf) {
+  const sched = wf && wf.on && wf.on.schedule;
+  if (!Array.isArray(sched)) return [];
+  return sched.map(s => s && s.cron).filter(Boolean);
+}
+
+// Minimal 5-field cron matcher, evaluated in UTC (same as GitHub Actions).
+function cronMatches(expr, date) {
+  const fields = expr.trim().split(/\s+/);
+  if (fields.length !== 5) return false;
+  const values = [date.getUTCMinutes(), date.getUTCHours(), date.getUTCDate(),
+    date.getUTCMonth() + 1, date.getUTCDay()];
+  return fields.every((field, i) => field.split(',').some(part => {
+    if (part === '*') return true;
+    const step = part.match(/^\*\/(\d+)$/);
+    if (step) return values[i] % Number(step[1]) === 0;
+    const range = part.match(/^(\d+)-(\d+)$/);
+    if (range) return values[i] >= +range[1] && values[i] <= +range[2];
+    return Number(part) === values[i];
+  }));
 }
 
 // Topological order of jobs honoring `needs`. Jobs whose needs failed are skipped.
@@ -235,8 +263,8 @@ async function runWorkflow({ file, wf }, repoDir, github) {
   return { ok, results, name: wf.name || file };
 }
 
-async function runRepoAt(repoDir, { repo, branch, sha, report }) {
-  const workflows = findWorkflows(repoDir);
+async function runRepoAt(repoDir, { repo, branch, sha, report, event = 'push' }) {
+  const workflows = findWorkflows(repoDir, event);
   if (!workflows.length) {
     log('no push-triggered workflows found in .github/workflows/');
     return true;
@@ -399,7 +427,7 @@ async function main() {
       const meta = cfg.repos[a];
       if (!meta) return console.error(`${a} is not watched — slyci add ${a}`);
       const { dir, sha } = syncRepo(a, meta.branch, null);
-      const ok = await runRepoAt(dir, { repo: a, branch: meta.branch, sha, report: true });
+      const ok = await runRepoAt(dir, { repo: a, branch: meta.branch, sha, report: true, event: 'trigger' });
       meta.lastSha = sha;
       saveConfig(cfg);
       process.exit(ok ? 0 : 1);
