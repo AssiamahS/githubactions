@@ -1,0 +1,21 @@
+name: ci
+on: push
+jobs:
+  lint:
+    steps:
+      - name: syntax check
+        run: node --check bin/slyci.js
+      - name: package.json valid
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json'))"
+  smoke:
+    needs: lint
+    env:
+      GREETING: slyci
+    steps:
+      - name: env + expressions work
+        run: |
+          test "$CI" = "true"
+          test -n "$GITHUB_SHA"
+          echo "sha=${{ github.sha }} repo=${{ github.repository }} greeting=$GREETING"
+      - name: help prints
+        run: node bin/slyci.js | head -3

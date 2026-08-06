@@ -1,0 +1,16 @@
+{
+  "name": "slyci",
+  "version": "1.0.1",
+  "description": "Self-hosted GitHub Actions alternative — polls your repos, runs workflow YAML natively on this machine, posts commit statuses back",
+  "bin": {
+    "slyci": "./bin/slyci.js"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "license": "MIT"
+}
