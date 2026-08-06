@@ -3,6 +3,8 @@ on: push
 jobs:
   lint:
     steps:
+      - name: install deps
+        run: npm install --no-fund --no-audit
       - name: syntax check
         run: node --check bin/slyci.js
       - name: package.json valid
