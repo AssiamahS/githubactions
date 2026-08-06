@@ -11,6 +11,9 @@ const path = require('path');
 const { spawn, execFileSync } = require('child_process');
 const yaml = require('js-yaml');
 
+// Piping output (slyci ... | head) closes stdout early; die quietly like cat does.
+process.stdout.on('error', e => { if (e.code === 'EPIPE') process.exit(0); });
+
 const HOME = os.homedir();
 const ROOT = path.join(HOME, '.slyci');
 const CONFIG_PATH = path.join(ROOT, 'config.json');
