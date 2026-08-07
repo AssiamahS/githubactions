@@ -90,3 +90,16 @@ Secrets live in `~/.slyci/secrets.json`:
 ~/.slyci/logs/         one log file per run
 ~/.slyci/daemon.log    launchd daemon output
 ```
+
+## The $0 CI Playbook
+
+slyci is free (MIT). If you want the full production wiring — running it on the
+**Codespaces free tier** (120 core-hours/month, a separate bucket from Actions
+minutes) with a wake-on-push Cloudflare Worker, auto-stop, quota watchdog, and
+the seven traps that each cost a debug session — that's packaged as a paid
+guide:
+
+**[The $0 CI Playbook — $19](https://sylvassiamah.gumroad.com/l/slyci)**
+
+Copy-paste devcontainer/boot/Worker code, quota math, and a `quota-watchdog.sh`
+that aborts a batch before GitHub hard-blocks your account mid-month.
