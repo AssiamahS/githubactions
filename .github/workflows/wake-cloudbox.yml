@@ -7,7 +7,7 @@
 name: wake-cloudbox
 on:
   schedule:
-    - cron: '20 12,13,14,15 * * *'
+    - cron: '20 12,13,14,15,16,17 * * *'
   workflow_dispatch:
 jobs:
   wake:
