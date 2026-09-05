@@ -1,0 +1,30 @@
+# Backstop wake for the scipio runner. The primary wake is the scipio-api
+# Cloudflare Worker cron at 12/13/14/15 UTC. When that misses (9/3: zero
+# wakes, 9/4: two of four), nothing else starts the box. This repo is public,
+# so Actions minutes are free: twenty minutes after each cron hour, start the
+# codespace if it is not already up. The pipeline is idempotent (batch_state
+# caps the day at 4 runs / 6 submits), so a redundant start costs nothing.
+name: wake-cloudbox
+on:
+  schedule:
+    - cron: '20 12,13,14,15 * * *'
+  workflow_dispatch:
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: start codespace if it is asleep
+        env:
+          GH_TOKEN: ${{ secrets.CODESPACE_TOKEN }}
+        run: |
+          set -u
+          if [ -z "${GH_TOKEN}" ]; then echo "CODESPACE_TOKEN secret missing"; exit 1; fi
+          box=$(gh api /user/codespaces --jq '.codespaces[] | select(.repository.full_name=="AssiamahS/cloudbox") | "\(.name) \(.state)"' | head -1)
+          echo "cloudbox: ${box:-none}"
+          name=${box%% *}; state=${box##* }
+          if [ -z "$name" ]; then echo "no codespace on AssiamahS/cloudbox"; exit 1; fi
+          case "$state" in
+            Available|Starting|Provisioning) echo "already up ($state), nothing to do"; exit 0;;
+          esac
+          gh api -X POST "/user/codespaces/$name/start" --jq '.state' || echo "start returned non-zero (409 while shutting down is normal)"
