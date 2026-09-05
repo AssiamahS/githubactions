@@ -1,6 +1,6 @@
 {
   "name": "slyci",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Self-hosted GitHub Actions alternative — polls your repos, runs workflow YAML natively on this machine, posts commit statuses back",
   "bin": {
     "slyci": "./bin/slyci.js"
