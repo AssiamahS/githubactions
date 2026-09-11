@@ -183,10 +183,13 @@ log.stream = null;
 
 function runStep(script, cwd, env, timeoutMin) {
   return new Promise(resolve => {
-    const child = spawn('bash', ['-eo', 'pipefail', '-c', script], { cwd, env });
+    // own process group: a timeout must take the whole step tree down.
+    // 9/10: killing just the shell left `uv run python` running for another
+    // 40 min while the job moved on and reported the step failed.
+    const child = spawn('bash', ['-eo', 'pipefail', '-c', script], { cwd, env, detached: true });
     const timer = setTimeout(() => {
       log(`  ! step timed out after ${timeoutMin} minutes, killing`);
-      child.kill('SIGKILL');
+      try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill('SIGKILL'); }
     }, timeoutMin * 60 * 1000);
     const forward = data => {
       process.stdout.write(data);
