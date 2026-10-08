@@ -7,7 +7,7 @@
 name: wake-cloudbox
 on:
   schedule:
-    - cron: '20 12-19 * * 1-5'   # 10/08: the box idle-stops ~4h after boot and the worker cron ends at 15Z; 16-19Z slices were lost every day
+    - cron: '20 12-19 * * *'   # 10/08: the box idle-stops ~4h after boot and the worker cron ends at 15Z; 16-19Z slices were lost every day
   workflow_dispatch:
 jobs:
   wake:
